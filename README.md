@@ -1,4 +1,4 @@
-# 📷 verkadacli — Inspect cameras, fetch thumbnails, and script Verkada APIs
+## 📷 verkadacli — Inspect cameras, fetch thumbnails, and script Verkada APIs
 
 `verkada` is a Go CLI for Verkada APIs. It supports named profiles (multiple orgs/regions), typed camera commands, local camera labels, and a raw `request` escape hatch.
 
