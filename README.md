@@ -84,10 +84,11 @@ Get one camera:
 Fetch a thumbnail:
 
 ```bash
-./bin/verkada cameras thumbnail --camera-id <camera_id> > thumb.jpg
+./bin/verkada cameras thumbnail --camera-id <camera_id>
 ./bin/verkada cameras thumbnail --camera-id <camera_id> --resolution hi-res --out thumb.jpg
 
-# Inline render in iTerm2 (still writes JPEG bytes to stdout unless you use --out)
+# Inline render in iTerm2/WezTerm (use --out if you also want a file)
+./bin/verkada cameras thumbnail --camera-id <camera_id> --view
 ./bin/verkada cameras thumbnail --camera-id <camera_id> --view --out thumb.jpg
 ```
 

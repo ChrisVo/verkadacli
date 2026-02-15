@@ -49,3 +49,40 @@ func TestFormatCameraListText_EnvelopeDevices(t *testing.T) {
 		t.Fatalf("unexpected output: %q", s)
 	}
 }
+
+func TestDecideThumbnailOutput_Piped_Default(t *testing.T) {
+	writeStdout, viewEnabled, err := decideThumbnailOutput(false, false, "", false)
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if !writeStdout || viewEnabled {
+		t.Fatalf("unexpected plan: write=%v view=%v", writeStdout, viewEnabled)
+	}
+}
+
+func TestDecideThumbnailOutput_TTY_InlineSupported_DefaultsToView(t *testing.T) {
+	writeStdout, viewEnabled, err := decideThumbnailOutput(true, true, "", false)
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if writeStdout || !viewEnabled {
+		t.Fatalf("unexpected plan: write=%v view=%v", writeStdout, viewEnabled)
+	}
+}
+
+func TestDecideThumbnailOutput_TTY_NoInline_Errors(t *testing.T) {
+	_, _, err := decideThumbnailOutput(true, false, "", false)
+	if err == nil {
+		t.Fatalf("expected err")
+	}
+}
+
+func TestDecideThumbnailOutput_TTY_ViewFlag_SuppressesStdout(t *testing.T) {
+	writeStdout, viewEnabled, err := decideThumbnailOutput(true, false, "", true)
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if writeStdout || !viewEnabled {
+		t.Fatalf("unexpected plan: write=%v view=%v", writeStdout, viewEnabled)
+	}
+}

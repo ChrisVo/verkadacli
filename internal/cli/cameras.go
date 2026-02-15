@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 // NewCamerasCmd groups camera-related typed endpoints.
@@ -39,6 +40,7 @@ func newCamerasListCmd(rf *rootFlags) *cobra.Command {
 	var pageToken string
 	var all bool
 	var wide bool
+	var jsonOut bool
 	var cameraID string
 	var q string
 
@@ -49,9 +51,18 @@ func newCamerasListCmd(rf *rootFlags) *cobra.Command {
   verkada cameras list
   verkada cameras list --page-size 200
   verkada cameras list --all
+  verkada cameras list --json
   verkada --profile eu cameras list --output json
 `),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Convenience: `--json` on this command behaves like `--output json`,
+			// but doesn't override an explicit `--output`.
+			if jsonOut {
+				if f := cmd.Flag("output"); f == nil || !f.Changed {
+					rf.Output = "json"
+				}
+			}
+
 			cfg, err := effectiveConfig(*rf)
 			if err != nil {
 				return err
@@ -197,6 +208,7 @@ func newCamerasListCmd(rf *rootFlags) *cobra.Command {
 	cmd.Flags().StringVar(&pageToken, "page-token", "", "Pagination token to start from")
 	cmd.Flags().BoolVar(&all, "all", false, "Fetch all pages")
 	cmd.Flags().BoolVar(&wide, "wide", false, "Include more columns in text output")
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "Output JSON (same as --output json)")
 	cmd.Flags().StringVar(&cameraID, "camera-id", "", "Filter by camera ID (exact match)")
 	cmd.Flags().StringVar(&q, "q", "", "Filter by substring match across id/name/site/label")
 	return cmd
@@ -470,11 +482,16 @@ func newCamerasThumbnailCmd(rf *rootFlags) *cobra.Command {
 		Long: strings.TrimSpace(`
 Returns a low-resolution or high-resolution thumbnail from a specified camera at or near a specified time.
 
-The response body is raw binary JPEG data. By default, this command writes the JPEG to stdout.
-Use --out to write to a file. Use --view to render the image inline in compatible terminals (iTerm2).
+The response body is raw binary JPEG data.
+
+Behavior:
+- If stdout is not a terminal (redirected/piped), JPEG bytes are written to stdout.
+- If stdout is a terminal, this command will not write raw JPEG bytes to it (it looks like noise).
+  In terminals that support inline images (iTerm2/WezTerm), it will render inline by default.
+  Otherwise, use --out or redirect stdout to a file.
 `),
 		Example: strings.TrimSpace(`
-  verkada cameras thumbnail --camera-id CAM123 > thumb.jpg
+  verkada cameras thumbnail --camera-id CAM123
   verkada cameras thumbnail --camera-id CAM123 --timestamp 1736893300 --resolution hi-res --out thumb.jpg
   verkada cameras thumbnail --camera-id CAM123 --view
 `),
@@ -590,6 +607,15 @@ Use --out to write to a file. Use --view to render the image inline in compatibl
 				return errors.New("unexpected JSON response for thumbnail endpoint")
 			}
 
+			// Decide whether to write raw bytes to stdout. Writing JPEG bytes to an interactive terminal is almost
+			// never desired (it looks like "junk"), so prefer inline rendering or require explicit redirection.
+			stdoutIsTTY := isTerminalWriter(cmd.OutOrStdout())
+			inlineSupported := terminalSupportsInlineImages()
+			writeStdout, viewEnabled, err := decideThumbnailOutput(stdoutIsTTY, inlineSupported, f.OutPath, f.View)
+			if err != nil {
+				return err
+			}
+
 			// Write JPEG bytes to file and/or stdout.
 			if f.OutPath != "" {
 				if err := os.MkdirAll(filepath.Dir(f.OutPath), 0o755); err != nil && filepath.Dir(f.OutPath) != "." {
@@ -599,11 +625,11 @@ Use --out to write to a file. Use --view to render the image inline in compatibl
 					return err
 				}
 				fmt.Fprintf(cmd.ErrOrStderr(), "wrote %s (%d bytes)\n", f.OutPath, len(b))
-			} else {
+			} else if writeStdout {
 				_, _ = cmd.OutOrStdout().Write(b)
 			}
 
-			if f.View {
+			if viewEnabled {
 				// Prefer to render from the bytes we already fetched, regardless of --out.
 				// iTerm2 inline images protocol: https://iterm2.com/documentation-images.html
 				if err := iterm2InlineJPEG(cmd.ErrOrStderr(), b, f.CameraID, ts); err != nil {
@@ -619,10 +645,56 @@ Use --out to write to a file. Use --view to render the image inline in compatibl
 	cmd.Flags().Int64Var(&f.Timestamp, "timestamp", 0, "Unix timestamp in seconds (default: now)")
 	cmd.Flags().StringVar(&f.Resolution, "resolution", "low-res", "Thumbnail resolution: low-res|hi-res")
 	cmd.Flags().StringVarP(&f.OutPath, "out", "o", "", "Write JPEG to file instead of stdout")
-	cmd.Flags().BoolVar(&f.View, "view", false, "Render the image inline in terminal (iTerm2)")
+	cmd.Flags().BoolVar(&f.View, "view", false, "Render the image inline in terminal (iTerm2/WezTerm)")
 	cmd.Flags().DurationVar(&f.Timeout, "timeout", 30*time.Second, "HTTP timeout")
 
 	return cmd
+}
+
+func isTerminalWriter(w io.Writer) bool {
+	f, ok := w.(*os.File)
+	if !ok {
+		return false
+	}
+	return term.IsTerminal(int(f.Fd()))
+}
+
+func terminalSupportsInlineImages() bool {
+	// iTerm2 and WezTerm support the iTerm2 inline images protocol.
+	// Avoid attempting this in unknown terminals; escape sequences can be noisy.
+	if os.Getenv("ITERM_SESSION_ID") != "" {
+		return true
+	}
+	if os.Getenv("WEZTERM_PANE") != "" {
+		return true
+	}
+	switch os.Getenv("TERM_PROGRAM") {
+	case "iTerm.app", "WezTerm":
+		return true
+	default:
+		return false
+	}
+}
+
+func decideThumbnailOutput(stdoutIsTTY bool, inlineSupported bool, outPath string, viewFlag bool) (writeStdout bool, viewEnabled bool, err error) {
+	if strings.TrimSpace(outPath) != "" {
+		return false, viewFlag, nil
+	}
+	if !stdoutIsTTY {
+		// Piped/redirection: preserve the original behavior.
+		return true, viewFlag, nil
+	}
+
+	// Stdout is an interactive terminal.
+	if viewFlag {
+		// Don't also dump JPEG bytes into the terminal.
+		return false, true, nil
+	}
+	if inlineSupported {
+		// Default to inline view for interactive terminals that support it.
+		return false, true, nil
+	}
+	return false, false, errors.New("refusing to write JPEG bytes to an interactive terminal; use --out <file> or redirect stdout (e.g. '> thumb.jpg')")
 }
 
 func buildCamerasThumbnailURL(baseURL, cameraID string, ts int64, resolution string) (string, error) {
