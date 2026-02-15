@@ -465,8 +465,9 @@ func newCamerasLabelListCmd(rf *rootFlags) *cobra.Command {
 
 type camerasThumbnailFlags struct {
 	CameraID   string
-	Timestamp  int64
+	Timestamp  string
 	Resolution string
+	Timezone   string
 
 	OutPath string
 	View    bool
@@ -483,6 +484,8 @@ func newCamerasThumbnailCmd(rf *rootFlags) *cobra.Command {
 Returns a low-resolution or high-resolution thumbnail from a specified camera at or near a specified time.
 
 The response body is raw binary JPEG data.
+The backend may return the closest cached thumbnail, which can differ by several minutes
+when no recent motion exists.
 
 Behavior:
 - If stdout is not a terminal (redirected/piped), JPEG bytes are written to stdout.
@@ -493,6 +496,7 @@ Behavior:
 		Example: strings.TrimSpace(`
   verkada cameras thumbnail --camera-id CAM123
   verkada cameras thumbnail --camera-id CAM123 --timestamp 1736893300 --resolution hi-res --out thumb.jpg
+  verkada cameras thumbnail --camera-id CAM123 --timestamp 2026-02-15T14:30:00Z --out thumb.jpg
   verkada cameras thumbnail --camera-id CAM123 --view
 `),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -511,9 +515,9 @@ Behavior:
 				return fmt.Errorf("invalid --resolution %q (expected low-res or hi-res)", f.Resolution)
 			}
 
-			ts := f.Timestamp
-			if ts == 0 {
-				ts = time.Now().Unix()
+			ts, err := parseThumbnailTimestamp(f.Timestamp, f.Timezone)
+			if err != nil {
+				return err
 			}
 
 			reqURL, err := buildCamerasThumbnailURL(cfg.BaseURL, f.CameraID, ts, f.Resolution)
@@ -642,13 +646,73 @@ Behavior:
 	}
 
 	cmd.Flags().StringVar(&f.CameraID, "camera-id", "", "Camera ID (required)")
-	cmd.Flags().Int64Var(&f.Timestamp, "timestamp", 0, "Unix timestamp in seconds (default: now)")
+	cmd.Flags().StringVar(&f.Timestamp, "timestamp", "", "Timestamp for thumbnail. Accepts Unix seconds (1736893300), RFC3339 (2026-02-15T14:30:00Z), RFC3339 without timezone, or local time (2026-02-15 14:30:00). Omit to use now.")
+	cmd.Flags().StringVar(&f.Timezone, "tz", "local", "Timezone used for naive timestamps (RFC3339 without timezone and space-separated local time).")
 	cmd.Flags().StringVar(&f.Resolution, "resolution", "low-res", "Thumbnail resolution: low-res|hi-res")
 	cmd.Flags().StringVarP(&f.OutPath, "out", "o", "", "Write JPEG to file instead of stdout")
 	cmd.Flags().BoolVar(&f.View, "view", false, "Render the image inline in terminal (iTerm2/WezTerm)")
 	cmd.Flags().DurationVar(&f.Timeout, "timeout", 30*time.Second, "HTTP timeout")
 
 	return cmd
+}
+
+func parseThumbnailTimestamp(raw string, tz string) (int64, error) {
+	ts := strings.TrimSpace(raw)
+	if ts == "" {
+		return time.Now().Unix(), nil
+	}
+
+	if unix, err := strconv.ParseInt(ts, 10, 64); err == nil {
+		return unix, nil
+	}
+
+	for _, layout := range []string{time.RFC3339} {
+		parsed, err := time.Parse(layout, ts)
+		if err == nil {
+			return parsed.Unix(), nil
+		}
+	}
+
+	zoneLoc, locName, err := parseTimestampLocation(tz)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, layout := range []string{
+		"2006-01-02T15:04:05",
+		"2006-01-02 15:04:05",
+	} {
+		parsed, err := time.ParseInLocation(layout, ts, zoneLoc)
+		if err == nil {
+			switch locName {
+			case "", "local":
+				// Keep behavior explicit for default local timezone.
+				return parsed.Unix(), nil
+			default:
+				// Ensure a stable conversion in canonical timezone names.
+				return parsed.In(zoneLoc).Unix(), nil
+			}
+		}
+	}
+
+	return 0, fmt.Errorf("invalid --timestamp value %q (supported: Unix seconds, RFC3339, RFC3339 without timezone, YYYY-MM-DD HH:MM:SS)", raw)
+}
+
+func parseTimestampLocation(raw string) (*time.Location, string, error) {
+	raw = strings.TrimSpace(raw)
+	locName := strings.ToLower(raw)
+	switch locName {
+	case "", "local", "system":
+		return time.Local, "local", nil
+	case "utc", "z", "utcz", "gmt":
+		return time.UTC, strings.ToLower(locName), nil
+	default:
+		loc, err := time.LoadLocation(raw)
+		if err != nil {
+			return nil, "", fmt.Errorf("invalid --tz value %q (expected a valid IANA timezone, e.g. America/Los_Angeles)", raw)
+		}
+		return loc, raw, nil
+	}
 }
 
 func isTerminalWriter(w io.Writer) bool {

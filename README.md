@@ -86,11 +86,19 @@ Fetch a thumbnail:
 ```bash
 ./bin/verkada cameras thumbnail --camera-id <camera_id>
 ./bin/verkada cameras thumbnail --camera-id <camera_id> --resolution hi-res --out thumb.jpg
+./bin/verkada cameras thumbnail --camera-id <camera_id> --timestamp 1736893300 --out thumb.jpg
+./bin/verkada cameras thumbnail --camera-id <camera_id> --timestamp 2026-02-15T14:30:00Z --out thumb.jpg
+./bin/verkada cameras thumbnail --camera-id <camera_id> --timestamp 2026-02-13T08:00:00 --tz America/Los_Angeles --out thumb.jpg
+./bin/verkada cameras thumbnail --camera-id <camera_id> --timestamp 2026-02-13 08:00:00 --tz America/Los_Angeles
+./bin/verkada cameras thumbnail --camera-id <camera_id> --timestamp 2026-02-13T08:00:00Z --tz America/Los_Angeles
+  -> `--tz` is ignored when --timestamp includes an explicit offset like `Z` or `-07:00`.
 
 # Inline render in iTerm2/WezTerm (use --out if you also want a file)
 ./bin/verkada cameras thumbnail --camera-id <camera_id> --view
 ./bin/verkada cameras thumbnail --camera-id <camera_id> --view --out thumb.jpg
 ```
+
+See also: [docs/thumbnail.md](docs/thumbnail.md) for full timestamp and timezone rules.
 
 ## Profiles
 
