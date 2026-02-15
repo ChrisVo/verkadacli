@@ -1,53 +1,149 @@
-# verkadacli
+# 📷 verkadacli — Inspect cameras, fetch thumbnails, and script Verkada APIs
 
-Go CLI to interface with Verkada.
+`verkada` is a Go CLI for Verkada APIs. It supports named profiles (multiple orgs/regions), typed camera commands, local camera labels, and a raw `request` escape hatch.
 
-## Status
+This is not an official Verkada project.
 
-This is a starter CLI skeleton using Cobra. It includes:
+## Features
 
-- `verkada config init` to create a local config file
-- `verkada config view` to print effective config
-- `verkada request` to make raw HTTP requests (until typed commands are added)
+- **Profiles**: keep multiple configs (regions/orgs) and switch with `--profile`.
+- **Auto API token**: if an endpoint requires `x-verkada-auth`, the CLI will `POST /token` using your `x-api-key`, cache it, and retry once.
+- **Cameras**:
+  - `cameras list` (paged, `--all`, `--wide`, filters)
+  - `cameras get <camera_id>`
+  - `cameras thumbnail` (low-res/hi-res) and optional **inline terminal view** (iTerm2)
+- **Local labels**: store friendly names locally (per profile) without modifying anything in Verkada.
+- **Scriptable output**: `--output text|json`
+- **Raw HTTP**: `verkada request ...` for endpoints we haven’t typed yet.
 
-## Build
+## Requirements
 
-This repo assumes you have Go installed.
+- Go (for building from source).
+- Network access to the Verkada API.
 
-```sh
+Important:
+- Your API base URL should be an API host like `https://api.verkada.com` (or `https://api.eu.verkada.com`, `https://api.au.verkada.com`).
+- Do not use `*.command.verkada.com` (that is the web UI; you’ll get HTML).
+
+## Install / build
+
+Build a local binary:
+
+```bash
 mkdir -p bin
 go build -o bin/verkada ./cmd/verkada
+./bin/verkada --help
 ```
 
-If you're in a restricted environment where Go can't write to the default build cache (e.g. `~/Library/Caches/go-build`), use:
+If you’re in an environment where Go can’t write to the default build cache, use:
 
-```sh
+```bash
 make build
 make test
 ```
 
-## Login
+## Quick start
 
-Save your base URL and API key to the local config file:
+Create a config:
 
-```sh
-./bin/verkada login --base-url https://api.verkada.com --api-key "$VERKADA_API_KEY"
+```bash
+./bin/verkada config init
 ```
 
-Or run `./bin/verkada login` to be prompted and save to config.
+Login (saves API key and base URL under a profile):
 
-## Auth / Config
+```bash
+./bin/verkada login
+```
+
+Or non-interactive:
+
+```bash
+./bin/verkada --profile default login --no-prompt \
+  --base-url https://api.verkada.com \
+  --api-key "$VERKADA_API_KEY"
+```
+
+List cameras (text table):
+
+```bash
+./bin/verkada cameras list
+./bin/verkada cameras list --wide
+./bin/verkada cameras list --all
+./bin/verkada cameras list --all --q lobby
+./bin/verkada cameras list --camera-id <camera_id>
+```
+
+Get one camera:
+
+```bash
+./bin/verkada cameras get <camera_id>
+./bin/verkada --output json cameras get <camera_id>
+```
+
+Fetch a thumbnail:
+
+```bash
+./bin/verkada cameras thumbnail --camera-id <camera_id> > thumb.jpg
+./bin/verkada cameras thumbnail --camera-id <camera_id> --resolution hi-res --out thumb.jpg
+
+# Inline render in iTerm2 (still writes JPEG bytes to stdout unless you use --out)
+./bin/verkada cameras thumbnail --camera-id <camera_id> --view --out thumb.jpg
+```
+
+## Profiles
+
+Pick a profile per command:
+
+```bash
+./bin/verkada --profile eu cameras list
+```
+
+Set a default profile:
+
+```bash
+./bin/verkada config profiles list
+./bin/verkada config use eu
+```
+
+## Local camera labels
+
+Labels are stored locally in your config profile and show up in `cameras list` output.
+
+```bash
+./bin/verkada cameras label set <camera_id> "Front Door"
+./bin/verkada cameras label list
+./bin/verkada cameras label rm <camera_id>
+```
+
+Filter using labels:
+
+```bash
+./bin/verkada cameras list --all --q "front"
+```
+
+## Raw requests
+
+Use typed commands when available; otherwise:
+
+```bash
+./bin/verkada request --method GET --path /cameras/v1/devices
+./bin/verkada request -H "x-api-key: $VERKADA_API_KEY" --method POST --path /token
+```
+
+## Config
 
 Config defaults to `$XDG_CONFIG_HOME/verkada/config.json` (often `~/.config/verkada/config.json`).
 
 Supported env vars:
 
+- `VERKADA_PROFILE`
 - `VERKADA_BASE_URL`
 - `VERKADA_API_KEY`
 - `VERKADA_TOKEN`
 
-You can also pass headers directly:
+Print effective config:
 
-```sh
-./bin/verkada request -H 'x-api-key: ...' --method GET --path /v1/cameras
+```bash
+./bin/verkada config view
 ```
