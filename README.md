@@ -33,7 +33,7 @@ Important:
 If you have Homebrew installed:
 
 ```bash
-brew install ChrisVo/tap/verkcli
+brew install chrisvo/tap/verkcli
 verkcli --help
 ```
 
