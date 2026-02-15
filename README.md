@@ -20,6 +20,7 @@ This is not an official Verkada project.
 
 - Go (for building from source).
 - Network access to the Verkada API.
+- `org_id` (required for streaming / footage endpoints like `cameras footage ...`).
 
 Important:
 - Your API base URL should be an API host like `https://api.verkada.com` (or `https://api.eu.verkada.com`, `https://api.au.verkada.com`).
@@ -186,6 +187,8 @@ The Verkada Streaming API returns HLS playlists (`.m3u8`). This CLI can:
 
 You must provide your `org_id` (set it once via `--org-id` / `VERKADA_ORG_ID` or store it in your profile config).
 The CLI will try to auto-discover `org_id` during `login`, but some API keys do not have permission to call the needed Core endpoint.
+
+See also: [docs/footage.md](docs/footage.md) for more examples and troubleshooting.
 
 Examples:
 
