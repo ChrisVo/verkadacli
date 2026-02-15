@@ -49,11 +49,11 @@ func newCamerasListCmd(rf *rootFlags) *cobra.Command {
 		Use:   "list",
 		Short: "List cameras in the org",
 		Example: strings.TrimSpace(`
-  verkada cameras list
-  verkada cameras list --page-size 200
-  verkada cameras list --all
-  verkada cameras list --json
-  verkada --profile eu cameras list --output json
+  verkcli cameras list
+  verkcli cameras list --page-size 200
+  verkcli cameras list --all
+  verkcli cameras list --json
+  verkcli --profile eu cameras list --output json
 `),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Convenience: `--json` on this command behaves like `--output json`,
@@ -360,7 +360,7 @@ func newCamerasLabelSetCmd(rf *rootFlags) *cobra.Command {
 				return err
 			}
 
-			profileName := firstNonEmpty(rf.Profile, envOr("VERKADA_PROFILE", ""), cf.CurrentProfile, "default")
+			profileName := firstNonEmpty(rf.Profile, envFirst("", "VERKCLI_PROFILE", "VERKADA_PROFILE"), cf.CurrentProfile, "default")
 			profile, ok := cf.Profiles[profileName]
 			if !ok {
 				return fmt.Errorf("profile %q not found in %s", profileName, p)
@@ -403,7 +403,7 @@ func newCamerasLabelRmCmd(rf *rootFlags) *cobra.Command {
 				return err
 			}
 
-			profileName := firstNonEmpty(rf.Profile, envOr("VERKADA_PROFILE", ""), cf.CurrentProfile, "default")
+			profileName := firstNonEmpty(rf.Profile, envFirst("", "VERKCLI_PROFILE", "VERKADA_PROFILE"), cf.CurrentProfile, "default")
 			profile, ok := cf.Profiles[profileName]
 			if !ok {
 				return fmt.Errorf("profile %q not found in %s", profileName, p)
@@ -436,7 +436,7 @@ func newCamerasLabelListCmd(rf *rootFlags) *cobra.Command {
 				return err
 			}
 
-			profileName := firstNonEmpty(rf.Profile, envOr("VERKADA_PROFILE", ""), cf.CurrentProfile, "default")
+			profileName := firstNonEmpty(rf.Profile, envFirst("", "VERKCLI_PROFILE", "VERKADA_PROFILE"), cf.CurrentProfile, "default")
 			profile, ok := cf.Profiles[profileName]
 			if !ok {
 				return fmt.Errorf("profile %q not found in %s", profileName, p)
@@ -495,10 +495,10 @@ Behavior:
   Otherwise, use --out or redirect stdout to a file.
 `),
 		Example: strings.TrimSpace(`
-  verkada cameras thumbnail --camera-id CAM123
-  verkada cameras thumbnail --camera-id CAM123 --timestamp 1736893300 --resolution hi-res --out thumb.jpg
-  verkada cameras thumbnail --camera-id CAM123 --timestamp 2026-02-15T14:30:00Z --out thumb.jpg
-  verkada cameras thumbnail --camera-id CAM123 --view
+  verkcli cameras thumbnail --camera-id CAM123
+  verkcli cameras thumbnail --camera-id CAM123 --timestamp 1736893300 --resolution hi-res --out thumb.jpg
+  verkcli cameras thumbnail --camera-id CAM123 --timestamp 2026-02-15T14:30:00Z --out thumb.jpg
+  verkcli cameras thumbnail --camera-id CAM123 --view
 `),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := effectiveConfig(*rf)

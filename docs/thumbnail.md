@@ -19,9 +19,9 @@ Naive forms (without timezone) are parsed using `--tz`.
 Examples:
 
 ```bash
-./bin/verkada cameras thumbnail --camera-id CAM123 --timestamp 2026-02-13T08:00:00 --tz America/Los_Angeles
-./bin/verkada cameras thumbnail --camera-id CAM123 --timestamp "2026-02-13 08:00:00" --tz America/Los_Angeles
-./bin/verkada cameras thumbnail --camera-id CAM123 --timestamp 2026-02-13T16:00:00Z
+./bin/verkcli cameras thumbnail --camera-id CAM123 --timestamp 2026-02-13T08:00:00 --tz America/Los_Angeles
+./bin/verkcli cameras thumbnail --camera-id CAM123 --timestamp "2026-02-13 08:00:00" --tz America/Los_Angeles
+./bin/verkcli cameras thumbnail --camera-id CAM123 --timestamp 2026-02-13T16:00:00Z
 ```
 
 ## Important endpoint behavior

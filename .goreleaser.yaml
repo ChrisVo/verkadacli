@@ -1,15 +1,15 @@
 version: 2
 
-project_name: verkadacli
+project_name: verkcli
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: verkada
-    main: ./cmd/verkada
-    binary: verkada
+  - id: verkcli
+    main: ./cmd/verkcli
+    binary: verkcli
     env:
       - CGO_ENABLED=0
     goos:
@@ -20,8 +20,8 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X verkadacli/internal/cli.version={{.Version}}
-      - -X verkadacli/internal/cli.commit={{.Commit}}
+      - -X verkcli/internal/cli.version={{.Version}}
+      - -X verkcli/internal/cli.commit={{.Commit}}
 
 archives:
   - id: default
@@ -35,14 +35,14 @@ changelog:
   disable: false
 
 brews:
-  - name: verkadacli
+  - name: verkcli
     folder: Formula
-    homepage: https://github.com/ChrisVo/verkadacli
+    homepage: https://github.com/ChrisVo/verkcli
     description: "Inspect cameras, fetch thumbnails, and script Verkada APIs"
     install: |
-      bin.install "verkada"
+      bin.install "verkcli"
     test: |
-      system "#{bin}/verkada", "version"
+      system "#{bin}/verkcli", "version"
     repository:
       owner: ChrisVo
       name: homebrew-tap

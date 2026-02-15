@@ -146,7 +146,7 @@ func persistProfileToken(rf rootFlags, token string, acquiredAt int64) error {
 		return err
 	}
 	normalizeConfigFile(&cf)
-	profileName := firstNonEmpty(rf.Profile, envOr("VERKADA_PROFILE", ""), cf.CurrentProfile, "default")
+	profileName := firstNonEmpty(rf.Profile, envFirst("", "VERKCLI_PROFILE", "VERKADA_PROFILE"), cf.CurrentProfile, "default")
 	profile, ok := cf.Profiles[profileName]
 	if !ok {
 		return fmt.Errorf("profile %q not found in %s", profileName, p)

@@ -26,9 +26,9 @@ func NewLoginCmd(rf *rootFlags) *cobra.Command {
 Login writes credentials into your local config file so subsequent commands can authenticate.
 
 Examples:
-  verkada login --base-url https://api.verkada.com --api-key $VERKADA_API_KEY
-  verkada --profile eu login --base-url https://api.eu.verkada.com --api-key $VERKADA_API_KEY
-  verkada login   # prompts and saves to config
+  verkcli login --base-url https://api.verkada.com --api-key $VERKCLI_API_KEY
+  verkcli --profile eu login --base-url https://api.eu.verkada.com --api-key $VERKCLI_API_KEY
+  verkcli login   # prompts and saves to config
 `),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			p, err := resolveConfigPath(rf.ConfigPath)
@@ -47,8 +47,8 @@ Examples:
 			}
 			normalizeConfigFile(&cf)
 
-			profileName := firstNonEmpty(rf.Profile, envOr("VERKADA_PROFILE", ""), cf.CurrentProfile, "default")
-			if !noPrompt && rf.Profile == "" && envOr("VERKADA_PROFILE", "") == "" {
+			profileName := firstNonEmpty(rf.Profile, envFirst("", "VERKCLI_PROFILE", "VERKADA_PROFILE"), cf.CurrentProfile, "default")
+			if !noPrompt && rf.Profile == "" && envFirst("", "VERKCLI_PROFILE", "VERKADA_PROFILE") == "" {
 				for {
 					s, err := promptString(cmd, "Profile", profileName, false /* secret */)
 					if err != nil {
@@ -73,12 +73,12 @@ Examples:
 				profile.Headers = map[string]string{}
 			}
 
-			baseURL := firstNonEmpty(rf.BaseURL, envOr("VERKADA_BASE_URL", ""), profile.BaseURL, "https://api.verkada.com")
+			baseURL := firstNonEmpty(rf.BaseURL, envFirst("", "VERKCLI_BASE_URL", "VERKADA_BASE_URL"), profile.BaseURL, "https://api.verkada.com")
 			// Don't suggest Command web UI URLs as the interactive default, but don't override explicit values.
 			baseURLPromptDefault := sanitizeBaseURLDefault(baseURL)
-			orgID := firstNonEmpty(rf.OrgID, envOr("VERKADA_ORG_ID", ""), profile.OrgID)
-			apiKey := firstNonEmpty(rf.APIKey, envOr("VERKADA_API_KEY", ""), profile.Auth.APIKey)
-			token := firstNonEmpty(rf.Token, envOr("VERKADA_TOKEN", ""), profile.Auth.Token)
+			orgID := firstNonEmpty(rf.OrgID, envFirst("", "VERKCLI_ORG_ID", "VERKADA_ORG_ID"), profile.OrgID)
+			apiKey := firstNonEmpty(rf.APIKey, envFirst("", "VERKCLI_API_KEY", "VERKADA_API_KEY"), profile.Auth.APIKey)
+			token := firstNonEmpty(rf.Token, envFirst("", "VERKCLI_TOKEN", "VERKADA_TOKEN"), profile.Auth.Token)
 
 			if !noPrompt {
 				// Keep prompting until base URL validates, so users don't get stuck on a single bad paste.
@@ -90,7 +90,7 @@ Examples:
 					s = strings.TrimSpace(s)
 					if strings.ContainsAny(s, " \t") {
 						// Common mistake: pasting flags into the prompt.
-						fmt.Fprintln(cmd.ErrOrStderr(), "Base URL should be a single URL. Don't paste flags here. Example: verkada login --base-url https://api.verkada.com --api-key ...")
+						fmt.Fprintln(cmd.ErrOrStderr(), "Base URL should be a single URL. Don't paste flags here. Example: verkcli login --base-url https://api.verkada.com --api-key ...")
 						continue
 					}
 					if s == "" {
@@ -114,7 +114,7 @@ Examples:
 						}
 						s = strings.TrimSpace(s)
 						if strings.ContainsAny(s, " \t") {
-							fmt.Fprintln(cmd.ErrOrStderr(), "API key should not contain spaces. If you're trying to pass flags, run: verkada login --base-url ... --api-key ...")
+							fmt.Fprintln(cmd.ErrOrStderr(), "API key should not contain spaces. If you're trying to pass flags, run: verkcli login --base-url ... --api-key ...")
 							continue
 						}
 						if s == "" {
@@ -131,13 +131,13 @@ Examples:
 			apiKey = strings.TrimSpace(apiKey)
 
 			if baseURL == "" {
-				return errors.New("base URL is empty (set --base-url or VERKADA_BASE_URL)")
+				return errors.New("base URL is empty (set --base-url or VERKCLI_BASE_URL / VERKADA_BASE_URL)")
 			}
 			if _, err := validateBaseURL(baseURL); err != nil {
 				return err
 			}
 			if apiKey == "" {
-				return errors.New("API key is empty (set --api-key or VERKADA_API_KEY)")
+				return errors.New("API key is empty (set --api-key or VERKCLI_API_KEY / VERKADA_API_KEY)")
 			}
 
 			// If org_id is still empty, best-effort auto-discover it. This helps unblock
@@ -162,7 +162,7 @@ Examples:
 					}
 					s = strings.TrimSpace(s)
 					if strings.ContainsAny(s, " \t") {
-						fmt.Fprintln(cmd.ErrOrStderr(), "Org ID should not contain spaces. If you're trying to pass flags, run: verkada login --org-id ...")
+						fmt.Fprintln(cmd.ErrOrStderr(), "Org ID should not contain spaces. If you're trying to pass flags, run: verkcli login --org-id ...")
 					} else {
 						orgID = s
 					}

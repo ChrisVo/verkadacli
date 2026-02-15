@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// These can be set at build time via -ldflags "-X verkadacli/internal/cli.version=... -X verkadacli/internal/cli.commit=..."
+// These can be set at build time via -ldflags "-X verkcli/internal/cli.version=... -X verkcli/internal/cli.commit=..."
 var (
 	version = "dev"
 	commit  = "none"
@@ -22,4 +22,3 @@ func NewVersionCmd() *cobra.Command {
 		},
 	}
 }
-

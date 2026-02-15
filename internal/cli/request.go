@@ -31,10 +31,10 @@ func NewRequestCmd(rf *rootFlags) *cobra.Command {
 		Use:   "request",
 		Short: "Make a raw HTTP request (useful until typed commands exist)",
 		Example: strings.TrimSpace(`
-  verkada config init
-  verkada request --method GET --path /v1/cameras
-  verkada request -H 'x-api-key: ...' --method GET --url https://api.verkada.com/v1/cameras
-  verkada request --method POST --path /v1/foo --body @payload.json
+  verkcli config init
+  verkcli request --method GET --path /v1/cameras
+  verkcli request -H 'x-api-key: ...' --method GET --url https://api.verkada.com/v1/cameras
+  verkcli request --method POST --path /v1/foo --body @payload.json
 `),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := effectiveConfig(*rf)

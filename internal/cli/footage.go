@@ -59,8 +59,8 @@ func newCamerasFootageURLCmd(rf *rootFlags) *cobra.Command {
 		Use:   "url",
 		Short: "Print an HLS (m3u8) URL for live or historical footage",
 		Example: strings.TrimSpace(`
-  verkada cameras footage url --camera-id CAM123 --start 2026-02-15T14:00:00Z --end 2026-02-15T14:10:00Z
-  verkada cameras footage url --camera-id CAM123 --live
+  verkcli cameras footage url --camera-id CAM123 --start 2026-02-15T14:00:00Z --end 2026-02-15T14:10:00Z
+  verkcli cameras footage url --camera-id CAM123 --live
 `),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := effectiveConfig(*rf)
@@ -76,7 +76,7 @@ func newCamerasFootageURLCmd(rf *rootFlags) *cobra.Command {
 				return err
 			}
 			if strings.TrimSpace(cfg.OrgID) == "" {
-				return errors.New("org id is empty (set in config, VERKADA_ORG_ID, or --org-id)")
+				return errors.New("org id is empty (set in config, VERKCLI_ORG_ID / VERKADA_ORG_ID, or --org-id)")
 			}
 
 			startTime, endTime, err := resolveStreamTimes(f)
@@ -109,8 +109,8 @@ func newCamerasFootageDownloadCmd(rf *rootFlags) *cobra.Command {
 		Use:   "download",
 		Short: "Download an MP4 clip via HLS using ffmpeg (requires ffmpeg installed)",
 		Example: strings.TrimSpace(`
-  verkada cameras footage download --camera-id CAM123 --start 2026-02-15T14:00:00Z --end 2026-02-15T14:10:00Z --out clip.mp4
-  verkada cameras footage download --camera-id CAM123 --start "2026-02-15 06:00:00" --end "2026-02-15 06:05:00" --tz America/Los_Angeles --out clip.mp4
+  verkcli cameras footage download --camera-id CAM123 --start 2026-02-15T14:00:00Z --end 2026-02-15T14:10:00Z --out clip.mp4
+  verkcli cameras footage download --camera-id CAM123 --start "2026-02-15 06:00:00" --end "2026-02-15 06:05:00" --tz America/Los_Angeles --out clip.mp4
 `),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := effectiveConfig(*rf)
@@ -133,7 +133,7 @@ func newCamerasFootageDownloadCmd(rf *rootFlags) *cobra.Command {
 			}
 
 			if _, err := exec.LookPath("ffmpeg"); err != nil {
-				return errors.New("ffmpeg not found in PATH; install ffmpeg or use `verkada cameras footage url ...` and download with your own HLS tool")
+				return errors.New("ffmpeg not found in PATH; install ffmpeg or use `verkcli cameras footage url ...` and download with your own HLS tool")
 			}
 
 			client := &http.Client{Timeout: f.Timeout}
@@ -141,7 +141,7 @@ func newCamerasFootageDownloadCmd(rf *rootFlags) *cobra.Command {
 				return err
 			}
 			if strings.TrimSpace(cfg.OrgID) == "" {
-				return errors.New("org id is empty (set in config, VERKADA_ORG_ID, or --org-id)")
+				return errors.New("org id is empty (set in config, VERKCLI_ORG_ID / VERKADA_ORG_ID, or --org-id)")
 			}
 			jwt, err := fetchStreamingJWT(client, cfg, rf)
 			if err != nil {
@@ -165,7 +165,7 @@ func newCamerasFootageDownloadCmd(rf *rootFlags) *cobra.Command {
 				return err
 			}
 
-			tmp, err := os.CreateTemp("", "verkada_footage_*.m3u8")
+			tmp, err := os.CreateTemp("", "verkcli_footage_*.m3u8")
 			if err != nil {
 				return err
 			}

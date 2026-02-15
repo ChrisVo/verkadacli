@@ -1,4 +1,4 @@
-module verkadacli
+module verkcli
 
 go 1.24.0
 

@@ -49,7 +49,17 @@ func defaultConfigPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "verkada", "config.json"), nil
+	// Default to a non-trademarked config dir, but fall back to legacy configs
+	// if they already exist on disk.
+	newPath := filepath.Join(dir, "verkcli", "config.json")
+	legacyPath := filepath.Join(dir, "verkada", "config.json")
+	if _, err := os.Stat(newPath); err == nil {
+		return newPath, nil
+	}
+	if _, err := os.Stat(legacyPath); err == nil {
+		return legacyPath, nil
+	}
+	return newPath, nil
 }
 
 func loadConfig(path string) (ConfigFile, error) {
@@ -250,11 +260,11 @@ func newConfigInitCmd(rf *rootFlags) *cobra.Command {
 			}
 
 			profile := Config{
-				BaseURL: envOr("VERKADA_BASE_URL", ""),
-				OrgID:   envOr("VERKADA_ORG_ID", ""),
+				BaseURL: envFirst("", "VERKCLI_BASE_URL", "VERKADA_BASE_URL"),
+				OrgID:   envFirst("", "VERKCLI_ORG_ID", "VERKADA_ORG_ID"),
 				Auth: AuthConfig{
-					APIKey: envOr("VERKADA_API_KEY", ""),
-					Token:  envOr("VERKADA_TOKEN", ""),
+					APIKey: envFirst("", "VERKCLI_API_KEY", "VERKADA_API_KEY"),
+					Token:  envFirst("", "VERKCLI_TOKEN", "VERKADA_TOKEN"),
 				},
 				Headers: map[string]string{},
 			}
@@ -289,13 +299,13 @@ func newConfigViewCmd(rf *rootFlags) *cobra.Command {
 			if err != nil {
 				if errors.Is(err, os.ErrNotExist) {
 					// Still allow viewing env/flags-only config.
-					profileName = firstNonEmpty(rf.Profile, envOr("VERKADA_PROFILE", ""), "default")
+					profileName = firstNonEmpty(rf.Profile, envFirst("", "VERKCLI_PROFILE", "VERKADA_PROFILE"), "default")
 					ecfg = Config{
-						BaseURL: envOr("VERKADA_BASE_URL", ""),
-						OrgID:   envOr("VERKADA_ORG_ID", ""),
+						BaseURL: envFirst("", "VERKCLI_BASE_URL", "VERKADA_BASE_URL"),
+						OrgID:   envFirst("", "VERKCLI_ORG_ID", "VERKADA_ORG_ID"),
 						Auth: AuthConfig{
-							APIKey: envOr("VERKADA_API_KEY", ""),
-							Token:  envOr("VERKADA_TOKEN", ""),
+							APIKey: envFirst("", "VERKCLI_API_KEY", "VERKADA_API_KEY"),
+							Token:  envFirst("", "VERKCLI_TOKEN", "VERKADA_TOKEN"),
 						},
 						Headers: map[string]string{},
 					}
@@ -338,23 +348,23 @@ func effectiveProfileConfig(rf rootFlags) (string, Config, error) {
 		return "", Config{}, err
 	}
 
-	profileName := firstNonEmpty(rf.Profile, envOr("VERKADA_PROFILE", ""), cf.CurrentProfile, "default")
+	profileName := firstNonEmpty(rf.Profile, envFirst("", "VERKCLI_PROFILE", "VERKADA_PROFILE"), cf.CurrentProfile, "default")
 	profile, ok := cf.Profiles[profileName]
 	if !ok {
 		return "", Config{}, fmt.Errorf("profile %q not found in %s", profileName, p)
 	}
 
 	// Env overrides config.
-	if v := envOr("VERKADA_BASE_URL", ""); v != "" {
+	if v := envFirst("", "VERKCLI_BASE_URL", "VERKADA_BASE_URL"); v != "" {
 		profile.BaseURL = v
 	}
-	if v := envOr("VERKADA_ORG_ID", ""); v != "" {
+	if v := envFirst("", "VERKCLI_ORG_ID", "VERKADA_ORG_ID"); v != "" {
 		profile.OrgID = v
 	}
-	if v := envOr("VERKADA_API_KEY", ""); v != "" {
+	if v := envFirst("", "VERKCLI_API_KEY", "VERKADA_API_KEY"); v != "" {
 		profile.Auth.APIKey = v
 	}
-	if v := envOr("VERKADA_TOKEN", ""); v != "" {
+	if v := envFirst("", "VERKCLI_TOKEN", "VERKADA_TOKEN"); v != "" {
 		profile.Auth.Token = v
 	}
 
@@ -373,7 +383,7 @@ func effectiveProfileConfig(rf rootFlags) (string, Config, error) {
 	}
 
 	if profile.BaseURL == "" {
-		return "", Config{}, errors.New("base URL is empty (set in config, VERKADA_BASE_URL, or --base-url)")
+		return "", Config{}, errors.New("base URL is empty (set in config, VERKCLI_BASE_URL / VERKADA_BASE_URL, or --base-url)")
 	}
 	if profile.Headers == nil {
 		profile.Headers = map[string]string{}
@@ -381,9 +391,11 @@ func effectiveProfileConfig(rf rootFlags) (string, Config, error) {
 	return profileName, profile, nil
 }
 
-func envOr(k, def string) string {
-	if v, ok := os.LookupEnv(k); ok {
-		return v
+func envFirst(def string, keys ...string) string {
+	for _, k := range keys {
+		if v, ok := os.LookupEnv(k); ok {
+			return v
+		}
 	}
 	return def
 }
@@ -402,7 +414,7 @@ func persistProfileOrgID(rf rootFlags, orgID string) error {
 		return err
 	}
 	normalizeConfigFile(&cf)
-	profileName := firstNonEmpty(rf.Profile, envOr("VERKADA_PROFILE", ""), cf.CurrentProfile, "default")
+	profileName := firstNonEmpty(rf.Profile, envFirst("", "VERKCLI_PROFILE", "VERKADA_PROFILE"), cf.CurrentProfile, "default")
 	profile, ok := cf.Profiles[profileName]
 	if !ok {
 		return fmt.Errorf("profile %q not found in %s", profileName, p)

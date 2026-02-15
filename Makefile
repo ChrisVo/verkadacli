@@ -1,7 +1,7 @@
 .PHONY: build test tidy clean
 
-BIN := bin/verkada
-PKG := ./cmd/verkada
+BIN := bin/verkcli
+PKG := ./cmd/verkcli
 
 # In some sandboxed environments, Go can't write to ~/Library/Caches/go-build.
 # Use repo-local caches so `make build` / `make test` works everywhere.

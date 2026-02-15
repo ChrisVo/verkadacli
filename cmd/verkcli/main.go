@@ -1,8 +1,7 @@
 package main
 
-import "verkadacli/internal/cli"
+import "verkcli/internal/cli"
 
 func main() {
 	cli.Execute()
 }
-
