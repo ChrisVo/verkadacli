@@ -216,30 +216,64 @@ func newConfigProfilesListCmd(rf *rootFlags) *cobra.Command {
 		Use:   "list",
 		Short: "List profiles in the config file",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			p, err := resolveConfigPath(rf.ConfigPath)
-			if err != nil {
-				return err
-			}
-			cf, err := loadConfig(p)
-			if err != nil {
-				return err
-			}
-			names := make([]string, 0, len(cf.Profiles))
-			for n := range cf.Profiles {
-				names = append(names, n)
-			}
-			sort.Strings(names)
-			for _, n := range names {
-				marker := " "
-				if n == cf.CurrentProfile {
-					marker = "*"
-				}
-				fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", marker, n)
-			}
-			return nil
+			return runProfilesList(cmd, rf)
 		},
 	}
 	return cmd
+}
+
+func runProfilesList(cmd *cobra.Command, rf *rootFlags) error {
+	p, err := resolveConfigPath(rf.ConfigPath)
+	if err != nil {
+		return err
+	}
+	cf, err := loadConfig(p)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			// Empty config: just list nothing (or empty JSON).
+			cf = ConfigFile{Profiles: map[string]Config{}}
+		} else {
+			return err
+		}
+	}
+	normalizeConfigFile(&cf)
+
+	names := make([]string, 0, len(cf.Profiles))
+	for n := range cf.Profiles {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+
+	out := cmd.OutOrStdout()
+	if rf.Output == "json" {
+		type profileView struct {
+			Name    string `json:"name"`
+			Current bool   `json:"current"`
+		}
+		profiles := make([]profileView, 0, len(names))
+		for _, n := range names {
+			profiles = append(profiles, profileView{Name: n, Current: n == cf.CurrentProfile})
+		}
+		blob, err := json.MarshalIndent(map[string]any{
+			"current_profile": cf.CurrentProfile,
+			"profiles":        profiles,
+		}, "", "  ")
+		if err != nil {
+			return err
+		}
+		blob = append(blob, '\n')
+		_, _ = out.Write(blob)
+		return nil
+	}
+
+	for _, n := range names {
+		marker := " "
+		if n == cf.CurrentProfile {
+			marker = "*"
+		}
+		fmt.Fprintf(out, "%s %s\n", marker, n)
+	}
+	return nil
 }
 
 func newConfigInitCmd(rf *rootFlags) *cobra.Command {

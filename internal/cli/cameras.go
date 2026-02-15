@@ -29,6 +29,8 @@ func NewCamerasCmd(rf *rootFlags) *cobra.Command {
 
 	cmd.AddCommand(newCamerasListCmd(rf))
 	cmd.AddCommand(newCamerasGetCmd(rf))
+	cmd.AddCommand(newCamerasSearchCmd(rf))
+	cmd.AddCommand(newCamerasIndexCmd(rf))
 	cmd.AddCommand(newCamerasLabelCmd(rf))
 	cmd.AddCommand(newCamerasThumbnailCmd(rf))
 	cmd.AddCommand(newCamerasFootageCmd(rf))
@@ -376,6 +378,14 @@ func newCamerasLabelSetCmd(rf *rootFlags) *cobra.Command {
 			if err := writeConfig(p, cf); err != nil {
 				return err
 			}
+
+			// Best-effort: keep the local search index in sync if it exists.
+			if cfg, err := effectiveConfig(*rf); err == nil {
+				if idxPath, err := camerasIndexPath(*rf, cfg); err == nil {
+					tryUpdateIndexLabel(idxPath, cameraID, &label)
+				}
+			}
+
 			fmt.Fprintf(cmd.OutOrStdout(), "label[%s]=%s\n", cameraID, label)
 			return nil
 		},
@@ -416,6 +426,14 @@ func newCamerasLabelRmCmd(rf *rootFlags) *cobra.Command {
 			if err := writeConfig(p, cf); err != nil {
 				return err
 			}
+
+			// Best-effort: keep the local search index in sync if it exists.
+			if cfg, err := effectiveConfig(*rf); err == nil {
+				if idxPath, err := camerasIndexPath(*rf, cfg); err == nil {
+					tryUpdateIndexLabel(idxPath, cameraID, nil)
+				}
+			}
+
 			return nil
 		},
 	}

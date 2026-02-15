@@ -46,6 +46,7 @@ func NewRootCmd() *cobra.Command {
 
 	cmd.AddCommand(NewVersionCmd())
 	cmd.AddCommand(NewConfigCmd(&rf))
+	cmd.AddCommand(NewProfilesCmd(&rf))
 	cmd.AddCommand(NewLoginCmd(&rf))
 	cmd.AddCommand(NewRequestCmd(&rf))
 	cmd.AddCommand(NewCamerasCmd(&rf))
