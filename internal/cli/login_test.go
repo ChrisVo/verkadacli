@@ -18,8 +18,10 @@ func TestLoginWritesConfig(t *testing.T) {
 	cmd.SetArgs([]string{
 		"login",
 		"--no-prompt",
+		"--no-verify",
 		"--config", cfgPath,
 		"--base-url", "https://api.example.com",
+		"--org-id", "ORG123",
 		"--api-key", "abc123",
 	})
 
@@ -37,6 +39,9 @@ func TestLoginWritesConfig(t *testing.T) {
 	p := cf.Profiles["default"]
 	if p.BaseURL != "https://api.example.com" {
 		t.Fatalf("base_url = %q", p.BaseURL)
+	}
+	if p.OrgID != "ORG123" {
+		t.Fatalf("org_id = %q", p.OrgID)
 	}
 	if p.Auth.APIKey != "abc123" {
 		t.Fatalf("api_key = %q", p.Auth.APIKey)
@@ -71,6 +76,7 @@ func TestLoginPreservesHeaders(t *testing.T) {
 	cmd.SetArgs([]string{
 		"login",
 		"--no-prompt",
+		"--no-verify",
 		"--config", cfgPath,
 		"--base-url", "https://api.new.example.com",
 		"--api-key", "newkey",

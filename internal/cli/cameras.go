@@ -31,6 +31,7 @@ func NewCamerasCmd(rf *rootFlags) *cobra.Command {
 	cmd.AddCommand(newCamerasGetCmd(rf))
 	cmd.AddCommand(newCamerasLabelCmd(rf))
 	cmd.AddCommand(newCamerasThumbnailCmd(rf))
+	cmd.AddCommand(newCamerasFootageCmd(rf))
 	return cmd
 }
 

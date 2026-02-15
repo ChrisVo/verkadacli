@@ -27,6 +27,17 @@ Important:
 
 ## Install / build
 
+## Homebrew
+
+If you have Homebrew installed:
+
+```bash
+brew install ChrisVo/tap/verkadacli
+verkada --help
+```
+
+(Formula name is `verkadacli`, installed binary is `verkada`.)
+
 Build a local binary:
 
 ```bash
@@ -61,7 +72,15 @@ Or non-interactive:
 ```bash
 ./bin/verkada --profile default login --no-prompt \
   --base-url https://api.verkada.com \
+  --org-id "YOUR_ORG_ID" \
   --api-key "$VERKADA_API_KEY"
+```
+
+By default, `login` runs a preflight check (it verifies the API key can list cameras and that the streaming `.m3u8` endpoint works for your `org_id`).
+Skip this if you only want to write config:
+
+```bash
+./bin/verkada login --no-verify ...
 ```
 
 List cameras (text table):
@@ -148,6 +167,7 @@ Supported env vars:
 
 - `VERKADA_PROFILE`
 - `VERKADA_BASE_URL`
+- `VERKADA_ORG_ID`
 - `VERKADA_API_KEY`
 - `VERKADA_TOKEN`
 
@@ -155,4 +175,27 @@ Print effective config:
 
 ```bash
 ./bin/verkada config view
+```
+
+## Footage streaming / download
+
+The Verkada Streaming API returns HLS playlists (`.m3u8`). This CLI can:
+
+- print a ready-to-use `.m3u8` URL
+- download a historical clip as MP4 using `ffmpeg` (if installed)
+
+You must provide your `org_id` (set it once via `--org-id` / `VERKADA_ORG_ID` or store it in your profile config).
+The CLI will try to auto-discover `org_id` during `login`, but some API keys do not have permission to call the needed Core endpoint.
+
+Examples:
+
+```bash
+# Print an HLS URL (historical)
+./bin/verkada --org-id ORG123 cameras footage url --camera-id CAM123 \
+  --start 2026-02-15T14:00:00Z --end 2026-02-15T14:10:00Z
+
+# Download an MP4 clip (requires ffmpeg)
+./bin/verkada --org-id ORG123 cameras footage download --camera-id CAM123 \
+  --start 2026-02-15T14:00:00Z --end 2026-02-15T14:10:00Z \
+  --out clip.mp4
 ```

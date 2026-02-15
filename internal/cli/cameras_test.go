@@ -112,7 +112,7 @@ func TestParseThumbnailTimestamp_AcceptsUnixTimestamp(t *testing.T) {
 }
 
 func TestParseThumbnailTimestamp_AcceptsRFC3339(t *testing.T) {
-	const expected = int64(1739573400) // 2025-02-15T14:30:00Z
+	const expected = int64(1739629800) // 2025-02-15T14:30:00Z
 	got, err := parseThumbnailTimestamp("2025-02-15T14:30:00Z", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

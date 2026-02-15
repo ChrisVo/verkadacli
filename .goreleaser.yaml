@@ -1,0 +1,51 @@
+version: 2
+
+project_name: verkadacli
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: verkada
+    main: ./cmd/verkada
+    binary: verkada
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X verkadacli/internal/cli.version={{.Version}}
+      - -X verkadacli/internal/cli.commit={{.Commit}}
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  disable: false
+
+brews:
+  - name: verkadacli
+    folder: Formula
+    homepage: https://github.com/ChrisVo/verkadacli
+    description: "Inspect cameras, fetch thumbnails, and script Verkada APIs"
+    install: |
+      bin.install "verkada"
+    test: |
+      system "#{bin}/verkada", "version"
+    repository:
+      owner: ChrisVo
+      name: homebrew-tap
+      branch: main
+      # Create a classic PAT with access to the tap repo and add it as a GitHub Actions secret.
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"

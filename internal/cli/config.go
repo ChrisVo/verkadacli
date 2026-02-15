@@ -14,6 +14,7 @@ import (
 
 type Config struct {
 	BaseURL string            `json:"base_url"`
+	OrgID   string            `json:"org_id,omitempty"`
 	Auth    AuthConfig        `json:"auth,omitempty"`
 	Headers map[string]string `json:"headers,omitempty"`
 	Labels  *LocalLabels      `json:"labels,omitempty"`
@@ -250,6 +251,7 @@ func newConfigInitCmd(rf *rootFlags) *cobra.Command {
 
 			profile := Config{
 				BaseURL: envOr("VERKADA_BASE_URL", ""),
+				OrgID:   envOr("VERKADA_ORG_ID", ""),
 				Auth: AuthConfig{
 					APIKey: envOr("VERKADA_API_KEY", ""),
 					Token:  envOr("VERKADA_TOKEN", ""),
@@ -290,6 +292,7 @@ func newConfigViewCmd(rf *rootFlags) *cobra.Command {
 					profileName = firstNonEmpty(rf.Profile, envOr("VERKADA_PROFILE", ""), "default")
 					ecfg = Config{
 						BaseURL: envOr("VERKADA_BASE_URL", ""),
+						OrgID:   envOr("VERKADA_ORG_ID", ""),
 						Auth: AuthConfig{
 							APIKey: envOr("VERKADA_API_KEY", ""),
 							Token:  envOr("VERKADA_TOKEN", ""),
@@ -345,6 +348,9 @@ func effectiveProfileConfig(rf rootFlags) (string, Config, error) {
 	if v := envOr("VERKADA_BASE_URL", ""); v != "" {
 		profile.BaseURL = v
 	}
+	if v := envOr("VERKADA_ORG_ID", ""); v != "" {
+		profile.OrgID = v
+	}
 	if v := envOr("VERKADA_API_KEY", ""); v != "" {
 		profile.Auth.APIKey = v
 	}
@@ -355,6 +361,9 @@ func effectiveProfileConfig(rf rootFlags) (string, Config, error) {
 	// Flags override env/config.
 	if rf.BaseURL != "" {
 		profile.BaseURL = rf.BaseURL
+	}
+	if rf.OrgID != "" {
+		profile.OrgID = rf.OrgID
 	}
 	if rf.APIKey != "" {
 		profile.Auth.APIKey = rf.APIKey
@@ -377,6 +386,30 @@ func envOr(k, def string) string {
 		return v
 	}
 	return def
+}
+
+func persistProfileOrgID(rf rootFlags, orgID string) error {
+	orgID = strings.TrimSpace(orgID)
+	if orgID == "" {
+		return nil
+	}
+	p, err := resolveConfigPath(rf.ConfigPath)
+	if err != nil {
+		return err
+	}
+	cf, err := loadConfig(p)
+	if err != nil {
+		return err
+	}
+	normalizeConfigFile(&cf)
+	profileName := firstNonEmpty(rf.Profile, envOr("VERKADA_PROFILE", ""), cf.CurrentProfile, "default")
+	profile, ok := cf.Profiles[profileName]
+	if !ok {
+		return fmt.Errorf("profile %q not found in %s", profileName, p)
+	}
+	profile.OrgID = orgID
+	cf.Profiles[profileName] = profile
+	return writeConfig(p, cf)
 }
 
 var errNoBody = errors.New("no body provided")

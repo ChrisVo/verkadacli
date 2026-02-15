@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -14,6 +16,8 @@ import (
 
 func NewLoginCmd(rf *rootFlags) *cobra.Command {
 	var noPrompt bool
+	var noVerify bool
+	var verifyTimeout time.Duration
 
 	cmd := &cobra.Command{
 		Use:   "login",
@@ -72,6 +76,7 @@ Examples:
 			baseURL := firstNonEmpty(rf.BaseURL, envOr("VERKADA_BASE_URL", ""), profile.BaseURL, "https://api.verkada.com")
 			// Don't suggest Command web UI URLs as the interactive default, but don't override explicit values.
 			baseURLPromptDefault := sanitizeBaseURLDefault(baseURL)
+			orgID := firstNonEmpty(rf.OrgID, envOr("VERKADA_ORG_ID", ""), profile.OrgID)
 			apiKey := firstNonEmpty(rf.APIKey, envOr("VERKADA_API_KEY", ""), profile.Auth.APIKey)
 			token := firstNonEmpty(rf.Token, envOr("VERKADA_TOKEN", ""), profile.Auth.Token)
 
@@ -135,8 +140,64 @@ Examples:
 				return errors.New("API key is empty (set --api-key or VERKADA_API_KEY)")
 			}
 
+			// If org_id is still empty, best-effort auto-discover it. This helps unblock
+			// footage streaming commands without making org_id mandatory for basic camera APIs.
+			if strings.TrimSpace(orgID) == "" {
+				client := &http.Client{Timeout: 15 * time.Second}
+				tmpCfg := profile
+				tmpCfg.BaseURL = baseURL
+				tmpCfg.Auth.APIKey = apiKey
+				tmpCfg.Auth.Token = token
+				filled, err := ensureOrgID(client, &tmpCfg, rf)
+				if err != nil && rf.Debug {
+					fmt.Fprintln(cmd.ErrOrStderr(), err.Error())
+				}
+				if filled {
+					orgID = tmpCfg.OrgID
+				} else if !noPrompt {
+					// Fall back to asking only if discovery didn't work.
+					s, err := promptString(cmd, "Org ID (required for footage streaming)", orgID, false /* secret */)
+					if err != nil {
+						return err
+					}
+					s = strings.TrimSpace(s)
+					if strings.ContainsAny(s, " \t") {
+						fmt.Fprintln(cmd.ErrOrStderr(), "Org ID should not contain spaces. If you're trying to pass flags, run: verkada login --org-id ...")
+					} else {
+						orgID = s
+					}
+				}
+			}
+
+			// Verify the provided (or discovered) config works before persisting it.
+			if !noVerify {
+				client := &http.Client{Timeout: verifyTimeout}
+				tmpCfg := profile
+				tmpCfg.BaseURL = baseURL
+				tmpCfg.OrgID = orgID
+				tmpCfg.Auth.APIKey = apiKey
+				tmpCfg.Auth.Token = token
+				if err := verifyLoginPreflight(client, &tmpCfg, rf); err != nil {
+					return err
+				}
+				// Carry any discovered values (e.g., token refresh) into the persisted profile.
+				if strings.TrimSpace(tmpCfg.OrgID) != "" {
+					orgID = strings.TrimSpace(tmpCfg.OrgID)
+				}
+				if strings.TrimSpace(tmpCfg.Auth.Token) != "" {
+					token = strings.TrimSpace(tmpCfg.Auth.Token)
+				}
+				if tmpCfg.Auth.TokenAcquiredAt != 0 {
+					profile.Auth.TokenAcquiredAt = tmpCfg.Auth.TokenAcquiredAt
+				}
+			}
+
 			profile.BaseURL = baseURL
 			profile.Auth.APIKey = apiKey
+			// Keep org ID if present (used for footage streaming endpoints).
+			if strings.TrimSpace(orgID) != "" {
+				profile.OrgID = strings.TrimSpace(orgID)
+			}
 			// Keep token if present; it's hidden at the root flags but still supported.
 			if strings.TrimSpace(token) != "" {
 				profile.Auth.Token = token
@@ -154,6 +215,8 @@ Examples:
 	}
 
 	cmd.Flags().BoolVar(&noPrompt, "no-prompt", false, "Fail instead of prompting for missing values")
+	cmd.Flags().BoolVar(&noVerify, "no-verify", false, "Skip preflight verification against the Verkada API")
+	cmd.Flags().DurationVar(&verifyTimeout, "verify-timeout", 20*time.Second, "Timeout for login preflight verification")
 	return cmd
 }
 
