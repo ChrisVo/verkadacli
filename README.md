@@ -11,7 +11,7 @@ This is not an official Verkada project.
 - **Cameras**:
   - `cameras list` (paged, `--all`, `--wide`, filters)
   - `cameras get <camera_id>`
-  - `cameras thumbnail` (low-res/hi-res) and optional **inline terminal view** (iTerm2)
+  - `cameras thumbnail` (low-res/hi-res) and **inline terminal view** (iTerm2/WezTerm)
 - **Local labels**: store friendly names locally (per profile) without modifying anything in Verkada.
 - **Scriptable output**: `--output text|json`
 - **Raw HTTP**: `verkcli request ...` for endpoints we haven’t typed yet.
@@ -115,10 +115,22 @@ Fetch a thumbnail:
 ./bin/verkcli cameras thumbnail --camera-id <camera_id> --timestamp 2026-02-13T08:00:00Z --tz America/Los_Angeles
   -> `--tz` is ignored when --timestamp includes an explicit offset like `Z` or `-07:00`.
 
-# Inline render in iTerm2/WezTerm (use --out if you also want a file)
+# Inline render in iTerm2/WezTerm (auto in supported terminals)
+./bin/verkcli cameras thumbnail --camera-id <camera_id>
+
+# Save to a file (no inline view unless you add --view)
+./bin/verkcli cameras thumbnail --camera-id <camera_id> --out thumb.jpg
+
+# Save to a file and also render inline
 ./bin/verkcli cameras thumbnail --camera-id <camera_id> --view
 ./bin/verkcli cameras thumbnail --camera-id <camera_id> --view --out thumb.jpg
 ```
+
+### Inline thumbnail preview
+
+In iTerm2 or WezTerm, `cameras thumbnail` will render the JPEG inline by default (to stderr) so stdout stays usable for redirection/piping.
+
+![Inline thumbnail preview in iTerm2/WezTerm](inline-image-cli.png)
 
 See also: [docs/thumbnail.md](docs/thumbnail.md) for full timestamp and timezone rules.
 
