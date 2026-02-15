@@ -39,6 +39,8 @@ verkcli --help
 
 (Formula name is `verkcli`, installed binary is `verkcli`.)
 
+Maintainers: see `docs/releasing.md`.
+
 Build a local binary:
 
 ```bash

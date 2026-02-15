@@ -2,6 +2,11 @@ version: 2
 
 project_name: verkcli
 
+release:
+  github:
+    owner: ChrisVo
+    name: verkcli
+
 before:
   hooks:
     - go mod tidy
@@ -25,7 +30,7 @@ builds:
 
 archives:
   - id: default
-    format: tar.gz
+    formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
@@ -36,7 +41,7 @@ changelog:
 
 brews:
   - name: verkcli
-    folder: Formula
+    directory: Formula
     homepage: https://github.com/ChrisVo/verkcli
     description: "Inspect cameras, fetch thumbnails, and script Verkada APIs"
     install: |
